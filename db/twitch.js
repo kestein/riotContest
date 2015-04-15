@@ -1,27 +1,41 @@
-/* Daemon process that monitors the lol streamers. updates the Online
+/* Daemon process that monitors the lol streamers. updates the "Online"
    database */
 var mongoClient = require('mongodb').MongoClient;
 var https = require("https");
 var database = "mongodb://localhost:27017/riotContest";
-var dbName = "Players";
+var dbPlayers = "Players";
+var dbOnline = "Online";
 var twitchAPI = "https://api.twitch.tv/kraken/streams?channel=";
 
+/* Pull the list of twitch users from the "Players" database */
 function getTwitchUsernames() {
    mongoClient.connect(database, function(err, db) {
       if(err) {
          return err;
       }
-      var collection = db.collection(dbName);
+      var docs = [];
+      var collection = db.collection(dbPlayers);
       var playersCursor = collection.find();
-      /* Use the twitch API  */
-      playersCursor.forEach(function(data) {
-         /* Call a function to query twitch because SOFTWARE DESIGN */
-         /* Wait some time so I don't DdoS twitch.tv */
-         setTimeout(processTwitchRequest(data), 1000);
+      playersCursor.toArray(function(err, documents) {
+         if(err == null) {
+            /* Use the twitch API  */
+            var time = 0;
+            for(var i = 0; i < documents.length; i++) {
+               time += 1000;
+               /* Call a function to query twitch because SOFTWARE DESIGN */
+               /* Wait some time so I don't DdoS twitch.tv */
+               setTimeout(processTwitchRequest(documents[i]), time);
+            };
+         }
+         else {
+            /* Mongo did not return anything, move along, log it */
+         }
       });
    });
 }
 
+/* Uses the twitch API to see if a given twitch streamer is online. Modifies
+   the "Online" database.*/
 function processTwitchRequest(data) {
    var twitchRequest = https.get(twitchAPI + data.twitchUsername, function(res) {
       var twitchData = '';
