@@ -1,11 +1,13 @@
 /* Daemon process that monitors the lol streamers. updates the "Online"
    database */
 var mongoClient = require('mongodb').MongoClient;
+//var server = require('mongodb').Server;
 var https = require("https");
 var database = "mongodb://localhost:27017/riotContest";
 var dbPlayers = "Players";
 var dbOnline = "Online";
 var twitchAPI = "https://api.twitch.tv/kraken/streams?channel=";
+//var client = new MongoClient(new Server("localhost", 27017));
 
 /* Pull the list of twitch users from the "Players" database */
 function getTwitchUsernames() {
@@ -19,13 +21,16 @@ function getTwitchUsernames() {
       playersCursor.toArray(function(err, documents) {
          if(err == null) {
             /* Use the twitch API  */
-            var time = 0;
-            for(var i = 0; i < documents.length; i++) {
-               time += 1000;
+            for(var y = 0; y < documents.length; y++) {
                /* Call a function to query twitch because SOFTWARE DESIGN */
                /* Wait some time so I don't DdoS twitch.tv */
-               setTimeout(processTwitchRequest(documents[i]), time);
-            };
+               (function(i) {
+                  var a = (i+1)*1000;
+                  setTimeout(function() {
+                     processTwitchRequest(documents[i])
+                  }, (y+1)*1200);
+               })(y);
+            }
          }
          else {
             /* Mongo did not return anything, move along, log it */
