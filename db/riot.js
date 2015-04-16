@@ -34,6 +34,8 @@ function getSummonerNames() {
          handleDbError(err);
       }
       var docs = [];
+      /* Keeps track of how long to delay the next lookup in accordance to Riot's API ToS */
+      var namesRead = 0;
       var collection = db.collection(dbOnline);
       var playersCursor = collection.find();
       playersCursor.toArray(function(err, documents) {
@@ -51,17 +53,20 @@ function getSummonerNames() {
                db.close();
             }
          }
-         /* Use the Riot API  */
+         /* For each twitch streamer that is ONLINE  */
          for(var y = 0; y < documents.length; y++) {
-            /* Call a function to query twitch because SOFTWARE DESIGN */
-            /* Wait some time so I don't DdoS twitch.tv */
-            (function(i) {
-               setTimeout(function() {
-              //    checkIfInGame(documents[i]);
-              console.log(documents[i]);
-               }, (i+1)*apiDelay);
-               checkDocOff();
-            })(y);
+            /* For each lolAccount this user has */
+            for(var b = 0; b < documents[y].lolAccounts.length; b++) {
+               /* increment namesRead to keep track of how much delay a specific lolAccount lookup needs */
+               namesRead += 1;
+               /* Query live game data using Riot API. some delay due to Riot API ToS */
+               (function(delay, playerDoc, lolAccount) {
+                  setTimeout(function() {
+                     checkIfInGame(playerDoc, lolAccount);
+                  }, (delay)*apiDelay);
+                  checkDocOff();
+               })(namesRead, documents[y], documents[y].lolAccounts[b]);
+            }
          }
       });
    });
@@ -69,17 +74,45 @@ function getSummonerNames() {
 
 /* Uses the twitch API to see if a given twitch streamer is online. Modifies
    the "Online" database. 
-   INPUT: A document containing information from the "Players" database.
-   OUTPUT: Maintains the "Online" database with twitch streamers that are online playing League. */
-function checkIfInGame(data) {
-   var twitchRequest = https.get(twitchAPI + data.twitchUsername, function(res) {
-      var twitchData = '';
-      /* Append the twitch stream data */
-      res.on('error', function(err) {
-         handleResponseError(err);
-      });
-      res.on('data', function(twitchInfo) {
-         twitchData += twitchInfo;
+   INPUT: A document containing information from the "Players" database about a specific twitchUsername, a specific lolAccount to look up.
+   OUTPUT: Maintains the "Game" database with twitch streamers that are in a League game. */
+function checkIfInGame(data, lolAccount) {
+   var apiQuery = ""
+   apiQuery = "https://" + data.region + "." + riotAPI + servers[data.region] + "/" + lolAccount + "?api_key=" + apiKey;
+   console.log(apiQuery);
+}
+
+function handleCursorError(err) {
+   console.log(err);
+   throw err;
+}
+
+function handleDbError(err) {
+   console.log(err);
+   throw err;
+}
+
+function handleResponseError(err) {
+   console.log(err);
+   throw err;
+}
+getSummonerNames();
+
+
+
+
+//I HAD TO MOVE STUFF FOR TESTING, PUT THIS IN THE FOR LOOP TO CHECK ALL THE SUMMONER NAMES
+function placeholder() {
+
+      var riotRequest = https.get(apiQuery, function(res) {
+         var riotData = '';
+         /* Append the twitch stream data */
+         res.on('error', function(err) {
+            handleResponseError(err);
+         });
+         res.on('data', function(riotInfo) {
+            riotData += twitchInfo;
+         });
       });
       /* Handle if a streamer is on or offline */
       res.on('end', function() {
@@ -122,21 +155,4 @@ function checkIfInGame(data) {
             }
          });
       });
-   });
 }
-
-function handleCursorError(err) {
-   console.log(err);
-   throw err;
-}
-
-function handleDbError(err) {
-   console.log(err);
-   throw err;
-}
-
-function handleResponseError(err) {
-   console.log(err);
-   throw err;
-}
-getSummonerNames();
