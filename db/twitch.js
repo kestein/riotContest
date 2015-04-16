@@ -61,6 +61,9 @@ function processTwitchRequest(data) {
    var twitchRequest = https.get(twitchAPI + data.twitchUsername, function(res) {
       var twitchData = '';
       /* Append the twitch stream data */
+      res.on('error', function(err) {
+         handleResponseError(err);
+      });
       res.on('data', function(twitchInfo) {
          twitchData += twitchInfo;
       });
@@ -110,10 +113,16 @@ function processTwitchRequest(data) {
 
 function handleCursorError(err) {
    console.log(err);
+   throw err;
 }
 
 function handleDbError(err) {
    console.log(err);
+   throw err;
 }
 
+function handleResponseError(err) {
+   console.log(err);
+   throw err;
+}
 getTwitchUsernames();
