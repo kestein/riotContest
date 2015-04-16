@@ -1,0 +1,5 @@
+#!/bin/bash -e
+
+while true; do
+node twitch.js
+done
