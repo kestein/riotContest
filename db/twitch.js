@@ -36,7 +36,6 @@ function getTwitchUsernames() {
             docs--;
             if(docs == 0) {
                db.close();
-               console.log("done");
             }
          }
          /* Use the twitch API  */
