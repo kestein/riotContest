@@ -80,7 +80,6 @@ function getSummonerNames() {
  * INPUT: A document containing information from the "Players" database about a specific twitchUsername, a specific lolAccount to look up.
  * OUTPUT: Maintains the "Game" database with twitch streamers that are in a League game. */
 function checkIfInGame(data, lolAccount) {
-   console.log("Checking " + lolAccount);
    var apiQuery = "";
    apiQuery = "https://" + data.region + "." + riotAPI + servers[data.region] + "/" + lolAccount + "?api_key=" + apiKey;
    var riotRequest = https.get(apiQuery, function(res) {
