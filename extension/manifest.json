@@ -1,0 +1,17 @@
+{
+   "name" : "Twitch Champion Tracker",
+   "version" : "1",
+   "manifest_version" : 2,
+
+   "default_locale" : "en",
+   "permissions" : [
+      "tabs"
+   ],
+   "description" : "Displays which champion a league of legends streamer is playing, which mode they are playing, and how long they have been in game for",
+   "content_scripts" : [
+   {
+      "matches" : ["(?i).*twitch.tv\/directory\/game\/League%20of%20Legends"],
+      "js" : ["streamDetails.js"]
+   }
+   ]
+}
