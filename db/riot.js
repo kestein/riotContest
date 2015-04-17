@@ -1,14 +1,15 @@
 /* Daemon process that uses Riot's API to find out if a streamer is in
-   game. Updates the Game database */
+ * game. Updates the Game database */
 var mongoClient = require('mongodb').MongoClient;
-//var server = require('mongodb').Server;
 var https = require("https");
+/* The location and name of the database */
 var database = "mongodb://localhost:27017/riotContest";
 var dbGame = "Game";
 var dbOnline = "Online";
 var apiDelay = 1200;
 /* Full url: "https://<SERVER>.",<riotAPI>, "<SERVER_NAME>/<LOL_ACCOUNT_NAME>" and "?api-key=<APIKEY>" */
 var riotAPI = "api.pvp.net/observer-mode/rest/consumer/getSpectatorGameInfo/";
+/* Original API key no stealerino. */
 var apiKey = "f6124045-24fa-4756-8dcc-27b3d53bd012";
 /* server : server_name */
 var servers = {
@@ -25,8 +26,8 @@ var servers = {
 };
 
 /* Pull the list of summoner names from the "Online" database
-INPUT: Nothing.
-OUTPUT: Feeds the list of summoner names from the "Online" database to checkIfInGame(). */
+ * INPUT: Nothing.
+ * OUTPUT: Feeds the list of summoner names from the "Online" database to checkIfInGame(). */
 function getSummonerNames() {
    mongoClient.connect(database, function(err, db) {
       if(err) {
@@ -44,7 +45,7 @@ function getSummonerNames() {
             handleCursorError(err);
          }
          /* Ensure that the database resource is freed only after the 
-            entire cursor has been iterated through*/
+          * entire cursor has been iterated through*/
          var docs = documents.length;
          /* End of the line */
          function checkDocOff() {
@@ -73,54 +74,104 @@ function getSummonerNames() {
 }
 
 /* Uses the twitch API to see if a given twitch streamer is online. Modifies
-   the "Online" database. 
-   INPUT: A document containing information from the "Players" database about a specific twitchUsername, a specific lolAccount to look up.
-   OUTPUT: Maintains the "Game" database with twitch streamers that are in a League game. */
+ * the "Online" database. 
+ * INPUT: A document containing information from the "Players" database about a specific twitchUsername, a specific lolAccount to look up.
+ * OUTPUT: Maintains the "Game" database with twitch streamers that are in a League game. */
 function checkIfInGame(data, lolAccount) {
-   var apiQuery = ""
+   console.log("Checking " + lolAccount);
+   var apiQuery = "";
    apiQuery = "https://" + data.region + "." + riotAPI + servers[data.region] + "/" + lolAccount + "?api_key=" + apiKey;
-      var riotRequest = https.get(apiQuery, function(res) {
-         var riotData = '';
-         /* Append the twitch stream data */
-         res.on('error', function(err) {
-            handleResponseError(err);
-         });
-         res.on('data', function(riotInfo) {
-            riotData += riotInfo;
-         });
-         res.on('end', function() {
-            /* Something else happened, log the status code and move on */
-            if(res.statusCode != 404 && res.statusCode != 200) {
-            }
-            /* We got an expected response code. Connect to the "Game" database for CRUD */
-            else {
-               mongoClient.connect(database, function(err, db) {
-                  if(err) {
-                     /* Handle the error */
-                     handleDbError(err);
-                  }
-                  var collection = db.collection(dbGame);
-                  /* Make a function to close the database. This way the db can be closed from the parent scope when we KNOW
-                     the children are done. */
-                  function closeDb() {
-                     db.close();
-                  }
-                  /* This lolAccount is not in a game. Remove them from the "Game" database. */
-                  if(res.statusCode == 404) {
-                     collection.remove({summonerNo: lolAccount});
-                     closeDb();
-                  }
-                  /* This lolAccount is in game (res.statusCode == 200). Add them to the "Game" database */
-                  else {
-                     /* Used for inserting game data into the "Game" database */
-                     var parsedRiotData = JSON.parse(riotData);
-                     var /* look up this twitchUsername in the "Game" database and either add or update the entry */
-                     closeDb();
-                  }
-               });
-            }
-         });
+   var riotRequest = https.get(apiQuery, function(res) {
+      var riotData = '';
+      /* Append the twitch stream data */
+      res.on('error', function(err) {
+         handleResponseError(err);
       });
+      res.on('data', function(riotInfo) {
+         riotData += riotInfo;
+      });
+      res.on('end', function() {
+         /* Something else happened, log the status code and move on */
+         if(res.statusCode != 404 && res.statusCode != 200) {
+            handleResponseError("Ya goofed");
+         }
+         /* We got an expected response code. Connect to the "Game" database for CRUD */
+         else {
+            mongoClient.connect(database, function(err, db) {
+               if(err) {
+                  /* Handle the error */
+                  handleDbError(err);
+               }
+               var collection = db.collection(dbGame);
+               /* Make a function to close the database. This way the db can be closed from the parent scope when we KNOW
+                * the children are done. */
+               function closeDb() {
+                  db.close();
+               }
+               /* This lolAccount is not in a game. Remove them from the "Game" database. */
+               if(res.statusCode == 404) {
+                  collection.remove({summonerNo: lolAccount});
+                  closeDb();
+               }
+               /* This lolAccount is in game (res.statusCode == 200). Add them to the "Game" database */
+               else {
+                  /* Used for inserting game data into the "Game" database */
+                  var parsedRiotData = JSON.parse(riotData);
+                  var ourSummoner = findParticipant(parsedRiotData.participants, lolAccount);
+                  /* This should not happen since one of the participants SHOULD be the account we looked up.
+                   * If this does happen contact Riot.*/
+                  if(ourSummoner == null) {
+                     throw "err"
+                  }
+                  /* use the data from riot to see if this account is already in game */
+                  var inGameCursor = collection.find({summonerNo : lolAccount});
+                  inGameCursor.nextObject(function(err, item) { 
+                     if(err) {
+                        /* Handle the error */
+                        handleCursorError(err);
+                     }
+                     /* They are already in the "Game" database. Update the entry. */
+                     /* The reason I update everything is that there may be an instance where a streamer is in one game and then
+                      * joins a new game before this script has the chance to delete the entry. Updating all of the fields will
+                      * alleviate this issue. */
+                     if(item != null) {
+                        collection.update({summonerNo : lolAccount}, {
+                           "twitchUsername" : data.twitchUsername,
+                           "gameMode" : data.gameQueueConfigId,
+                           "summonerNo" : lolAccount,
+                           "timeElapsed" : data.gameLength,
+                           "champion" : ourSummoner.championId
+                           });
+                     }
+                     /* The twitch streamer just entered a game. Add an entry in the "Game" database. */
+                     else {
+                        collection.insert({
+                           "twitchUsername" : data.twitchUsername,
+                           "gameMode" : data.gameQueueConfigId,
+                           "summonerNo" : lolAccount,
+                           "timeElapsed" : data.gameLength,
+                           "champion" : ourSummoner.championId
+                         });
+                     }
+                  });
+                  closeDb();
+               }
+            });
+         }
+      });
+   });
+}
+
+/* Goes through the list of plays in the game and pulls out the one belonging to the twitch streamer
+   INPUT: the list of participants in this game, the account of the participant we want
+   OUTPUT: the participant's JSON */
+function findParticipant(participants, lolAccount) {
+   for(var i = 0; i < participants.length; i++) {
+      if(participants[i].summonerId == lolAccount) {
+         return participants[i];
+      }
+   }
+   return null;
 }
 
 function handleCursorError(err) {
@@ -138,36 +189,3 @@ function handleResponseError(err) {
    throw err;
 }
 getSummonerNames();
-
-
-
-
-//I HAD TO MOVE STUFF FOR TESTING, PUT THIS IN THE FOR LOOP TO CHECK ALL THE SUMMONER NAMES
-function placeholder() {
-
-            /* User is online and playing League. See if they need to be added to the "Online" database */
-            if(parsedTwitchData._total > 0 && parsedTwitchData.streams[0].game == lolGame) {
-               /* use the data from twitch to see if this user is already in the "Online" database */
-               var onlineCursor = collection.find({twitchUsername: parsedTwitchData.streams[0].channel.display_name});
-               onlineCursor.nextObject(function(err, item) { 
-                  if(err) {
-                     /* Handle the error */
-                     handleCursorError(err);
-                  }
-                  /* They are already in the "Online" database. Do nothing */
-                  if(item != null) {
-                     /* TODO: make a priority queue and give this twitch streamer the lowest priority */
-                  }
-                  /* item is null. The user just came online, add them to the "Online" database */
-                  else {
-                     collection.insert(data);
-                  }
-                  closeDb();
-               });
-            }
-            /* The user is not online or not playing League. Remove them from the "Online" database */
-            else {
-               collection.remove(data);
-               closeDb();
-            }
-}
