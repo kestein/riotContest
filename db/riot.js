@@ -79,7 +79,6 @@ function getSummonerNames() {
 function checkIfInGame(data, lolAccount) {
    var apiQuery = ""
    apiQuery = "https://" + data.region + "." + riotAPI + servers[data.region] + "/" + lolAccount + "?api_key=" + apiKey;
-   console.log(apiQuery);
       var riotRequest = https.get(apiQuery, function(res) {
          var riotData = '';
          /* Append the twitch stream data */
@@ -91,20 +90,34 @@ function checkIfInGame(data, lolAccount) {
          });
          res.on('end', function() {
             /* Something else happened, log the status code and move on */
-            if(res.statusCode != 404 || res.statusCode != 200) {
-               console.log(res.statusCode);
+            if(res.statusCode != 404 && res.statusCode != 200) {
             }
-            /* We got an expected response code. Look into the "Game" database */
+            /* We got an expected response code. Connect to the "Game" database for CRUD */
             else {
-               /* This lolAccount is not in a game. Remove them from the "Game" database. */
-               if(res.statusCode == 404) {
-                  console.log(res.statusCode);
-               }
-               /* This lolAccount is in game (res.statusCode == 200). Add them to the "Game" database */
-               else {
-                  var parsedRiotData = JSON.parse(riotData);
-                  console.log(parsedRiotData);
-               }
+               mongoClient.connect(database, function(err, db) {
+                  if(err) {
+                     /* Handle the error */
+                     handleDbError(err);
+                  }
+                  var collection = db.collection(dbGame);
+                  /* Make a function to close the database. This way the db can be closed from the parent scope when we KNOW
+                     the children are done. */
+                  function closeDb() {
+                     db.close();
+                  }
+                  /* This lolAccount is not in a game. Remove them from the "Game" database. */
+                  if(res.statusCode == 404) {
+                     collection.remove({summonerNo: lolAccount});
+                     closeDb();
+                  }
+                  /* This lolAccount is in game (res.statusCode == 200). Add them to the "Game" database */
+                  else {
+                     /* Used for inserting game data into the "Game" database */
+                     var parsedRiotData = JSON.parse(riotData);
+                     var /* look up this twitchUsername in the "Game" database and either add or update the entry */
+                     closeDb();
+                  }
+               });
             }
          });
       });
@@ -132,19 +145,6 @@ getSummonerNames();
 //I HAD TO MOVE STUFF FOR TESTING, PUT THIS IN THE FOR LOOP TO CHECK ALL THE SUMMONER NAMES
 function placeholder() {
 
-      /* Handle if a streamer is on or offline */
-         var parsedTwitchData = JSON.parse(twitchData);
-         mongoClient.connect(database, function(err, db) {
-            if(err) {
-               /* Handle the error */
-               handleDbError(err);
-            }
-            var collection = db.collection(dbOnline);
-            /* Make a function to close the database. This way the db can be closed from the parent scope when we KNOW
-               the children are done. */
-            function closeDb() {
-               db.close();
-            }
             /* User is online and playing League. See if they need to be added to the "Online" database */
             if(parsedTwitchData._total > 0 && parsedTwitchData.streams[0].game == lolGame) {
                /* use the data from twitch to see if this user is already in the "Online" database */
@@ -170,5 +170,4 @@ function placeholder() {
                collection.remove(data);
                closeDb();
             }
-         });
 }
