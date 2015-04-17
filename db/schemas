@@ -1,0 +1,19 @@
+Players {
+   twitchUsername : String,
+   lolAccounts : int Array,
+   region : String
+}
+
+Online {
+   twitchUsername : String,
+   lolAccounts : int Array,
+   region : String
+}
+
+Game {
+   twitchUsername : String,
+   champion : int,
+   timeElapsed : int,
+   summonerNo : int,
+   gameMode : int /* gameQueueConfigId */
+}
