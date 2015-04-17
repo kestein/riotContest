@@ -80,20 +80,48 @@ function checkIfInGame(data, lolAccount) {
    var apiQuery = ""
    apiQuery = "https://" + data.region + "." + riotAPI + servers[data.region] + "/" + lolAccount + "?api_key=" + apiKey;
    console.log(apiQuery);
+      var riotRequest = https.get(apiQuery, function(res) {
+         var riotData = '';
+         /* Append the twitch stream data */
+         res.on('error', function(err) {
+            handleResponseError(err);
+         });
+         res.on('data', function(riotInfo) {
+            riotData += riotInfo;
+         });
+         res.on('end', function() {
+            /* Something else happened, log the status code and move on */
+            if(res.statusCode != 404 || res.statusCode != 200) {
+               console.log(res.statusCode);
+            }
+            /* We got an expected response code. Look into the "Game" database */
+            else {
+               /* This lolAccount is not in a game. Remove them from the "Game" database. */
+               if(res.statusCode == 404) {
+                  console.log(res.statusCode);
+               }
+               /* This lolAccount is in game (res.statusCode == 200). Add them to the "Game" database */
+               else {
+                  var parsedRiotData = JSON.parse(riotData);
+                  console.log(parsedRiotData);
+               }
+            }
+         });
+      });
 }
 
 function handleCursorError(err) {
-   console.log(err);
+   console.log("Cursor error: " + err);
    throw err;
 }
 
 function handleDbError(err) {
-   console.log(err);
+   console.log("db error: " + err);
    throw err;
 }
 
 function handleResponseError(err) {
-   console.log(err);
+   console.log("Response error: " + err);
    throw err;
 }
 getSummonerNames();
@@ -104,18 +132,7 @@ getSummonerNames();
 //I HAD TO MOVE STUFF FOR TESTING, PUT THIS IN THE FOR LOOP TO CHECK ALL THE SUMMONER NAMES
 function placeholder() {
 
-      var riotRequest = https.get(apiQuery, function(res) {
-         var riotData = '';
-         /* Append the twitch stream data */
-         res.on('error', function(err) {
-            handleResponseError(err);
-         });
-         res.on('data', function(riotInfo) {
-            riotData += twitchInfo;
-         });
-      });
       /* Handle if a streamer is on or offline */
-      res.on('end', function() {
          var parsedTwitchData = JSON.parse(twitchData);
          mongoClient.connect(database, function(err, db) {
             if(err) {
@@ -154,5 +171,4 @@ function placeholder() {
                closeDb();
             }
          });
-      });
 }
