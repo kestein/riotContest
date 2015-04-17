@@ -7,6 +7,8 @@ var database = "mongodb://localhost:27017/riotContest";
 var dbGame = "Game";
 var dbOnline = "Online";
 var apiDelay = 1200;
+/* The 3 min delay for spectating a League game */
+var spectateDelay = 180;
 /* Full url: "https://<SERVER>.",<riotAPI>, "<SERVER_NAME>/<LOL_ACCOUNT_NAME>" and "?api-key=<APIKEY>" */
 var riotAPI = "api.pvp.net/observer-mode/rest/consumer/getSpectatorGameInfo/";
 /* Original API key no stealerino. */
@@ -121,6 +123,7 @@ function checkIfInGame(data, lolAccount) {
                   /* This should not happen since one of the participants SHOULD be the account we looked up.
                    * If this does happen contact Riot.*/
                   if(ourSummoner == null) {
+                     closeDb();
                      throw "err"
                   }
                   /* use the data from riot to see if this account is already in game */
@@ -137,9 +140,9 @@ function checkIfInGame(data, lolAccount) {
                      if(item != null) {
                         collection.update({summonerNo : lolAccount}, {
                            "twitchUsername" : data.twitchUsername,
-                           "gameMode" : data.gameQueueConfigId,
+                           "gameMode" : parsedRiotData.gameQueueConfigId,
                            "summonerNo" : lolAccount,
-                           "timeElapsed" : data.gameLength,
+                           "timeElapsed" : parsedRiotData.gameLength + spectateDelay,
                            "champion" : ourSummoner.championId
                            });
                      }
@@ -147,14 +150,14 @@ function checkIfInGame(data, lolAccount) {
                      else {
                         collection.insert({
                            "twitchUsername" : data.twitchUsername,
-                           "gameMode" : data.gameQueueConfigId,
+                           "gameMode" : parsedRiotData.gameQueueConfigId,
                            "summonerNo" : lolAccount,
-                           "timeElapsed" : data.gameLength,
+                           "timeElapsed" : parsedRiotData.gameLength + spectateDelay,
                            "champion" : ourSummoner.championId
                          });
                      }
+                     closeDb();
                   });
-                  closeDb();
                }
             });
          }
