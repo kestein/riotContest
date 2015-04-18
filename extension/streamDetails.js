@@ -6,16 +6,17 @@ $(document).ready(function() {
    /* Run the script if we are on twitch.tv */
    /* Since twitch doesn't use http(s) in their urls, this is how I detect if we are on
     * http://www.twitch.tv/directory/game/League%20of%20Legends */
-    var imgUrl = $('.thumb a[href^="/froggen"] img').attr('src');
-    $('.thumb a[href^="/froggen"]').parent().css({
-       'background-image': 'url(' + imgUrl + ')',
-       'background-size': '100%'
-    });
-    //$('.thumb a[href^="/froggen"]').parent().attr('href', '/froggen');
-    $('.thumb a[href^="/froggen"]').css({
-       'display': 'block'
-    });
-    $('.thumb a[href^="/froggen"] img').attr('opacity', 0);
+   var imgUrl = $('.thumb a[href^="/scarra"] img').attr('src');
+   $('.thumb a[href^="/scarra"]').parent().css({
+      'background-image': 'url(' + imgUrl + ')',
+      'background-size': '100%'
+   });
+   $('.thumb a[href^="/scarra"]').css({
+      'display': 'block'
+   });
+   $('.thumb a[href^="/scarra"] img').attr('opacity', 0.0);
+   $('.thumb a[href^="/scarra"]').prepend("<img id=\"yi\" src=\"http://imgur.com/PHq7iXO.png\">");
+    
 
    if($(".directory_header h2").text().trim().substring(0, 17) == "League of Legends") {
      // $.get("http://localhost:8000", processGameInfo, "json");
@@ -39,5 +40,5 @@ function processGameInfo(data, resStatus, xhr) {
 function showDetails(gameDetails) {
    var streamer = $("a").attr('href', "\/" + gameDetails.twitchUsername.toLowerCase());
    /* This selects a specific image. use this to get to the div? */
-    $('.thumb a[href^="/froggen"] img').append('<img src="http://s.imgur.com/images/logo-1200-630.jpg?2"></img>');
+    $('.thumb a[href^="/scarra"] img').append('<img src="http://s.imgur.com/images/logo-1200-630.jpg?2"></img>');
 }
