@@ -1,0 +1,6 @@
+#!/bin/bash -e
+
+while true; do
+   node twitch.js 
+   node riot.js  
+done
