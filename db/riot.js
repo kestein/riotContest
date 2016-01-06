@@ -12,7 +12,7 @@ var spectateDelay = 180;
 /* Full url: "https://<SERVER>.",<riotAPI>, "<SERVER_NAME>/<LOL_ACCOUNT_NAME>" and "?api-key=<APIKEY>" */
 var riotAPI = "api.pvp.net/observer-mode/rest/consumer/getSpectatorGameInfo/";
 /* Original API key no stealerino. */
-var apiKey = "f6124045-24fa-4756-8dcc-27b3d53bd012";
+var apiKey = "LOL PUT YOUR API KEY HERE";
 /* server : server_name */
 var servers = {
    "na" : "NA1",
